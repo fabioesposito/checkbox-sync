@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Synchronized Checkboxes</title>
+	<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.0.0/build/pure-min.css"
+		integrity="sha384-X38yfunGUhNzHpBaEBsWLO+A0HDYOQi8ufWDkZ0k9e0eXz/tH3II7uKZ9msv++Ls" crossorigin="anonymous">
+</head>
+
+<body>
+	<h1>Synchronized Checkboxes</h1>
+	<div>
+		<p></p>
+	</div>
+	<div class="pure-g">
+		{{range $index, $checked := .}}
+		<div class="pure-u-1-24">
+			<input type="checkbox" id="cb{{$index}}" {{if $checked}}checked{{end}} hx-post="/toggle?id={{$index}}"
+				hx-trigger="click" hx-swap="none">
+		</div>
+		{{end}}
+	</div>
+
+	<script>
+		const socket = new WebSocket("ws://" + window.location.host + "/ws");
+		socket.onmessage = function (event) {
+			const [id, checked] = event.data.split(':');
+			const checkbox = document.getElementById(`cb${id}`);
+			if (checkbox) {
+				checkbox.checked = checked === "true";
+			}
+		};
+	</script>
+</body>
+
+</html>
