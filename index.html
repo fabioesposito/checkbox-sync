@@ -12,11 +12,9 @@
 
 <body>
 	<h1>Synchronized Checkboxes</h1>
-	<div>
-		<p></p>
-	</div>
+	<p>Active connections: <span id="connection-count">0</span></p>
 	<div class="pure-g">
-		{{range $index, $checked := .}}
+		{{range $index, $checked := .Checkboxes}}
 		<div class="pure-u-1-24">
 			<input type="checkbox" id="cb{{$index}}" {{if $checked}}checked{{end}} hx-post="/toggle?id={{$index}}"
 				hx-trigger="click" hx-swap="none">
@@ -27,10 +25,16 @@
 	<script>
 		const socket = new WebSocket("ws://" + window.location.host + "/ws");
 		socket.onmessage = function (event) {
-			const [id, checked] = event.data.split(':');
-			const checkbox = document.getElementById(`cb${id}`);
-			if (checkbox) {
-				checkbox.checked = checked === "true";
+			const [type, ...data] = event.data.split(':');
+			if (type === 'checkbox') {
+				const [id, checked] = data;
+				const checkbox = document.getElementById(`cb${id}`);
+				if (checkbox) {
+					checkbox.checked = checked === "true";
+				}
+			} else if (type === 'connections') {
+				const count = data[0];
+				document.getElementById('connection-count').textContent = count;
 			}
 		};
 	</script>

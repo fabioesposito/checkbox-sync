@@ -21,6 +21,10 @@ var (
 	checkboxes [1000]bool
 )
 
+type Data struct {
+	Checkboxes [1000]bool
+}
+
 func main() {
 	http.HandleFunc("/", handleIndex)
 	http.HandleFunc("/ws", handleWebSocket)
@@ -36,7 +40,10 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	tmpl.Execute(w, checkboxes)
+	data := Data{
+		Checkboxes: checkboxes,
+	}
+	tmpl.Execute(w, data)
 }
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -51,12 +58,15 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	clients[conn] = true
 	clientsMux.Unlock()
 
+	broadcastConnectionCount()
+
 	for {
 		_, _, err := conn.ReadMessage()
 		if err != nil {
 			clientsMux.Lock()
 			delete(clients, conn)
 			clientsMux.Unlock()
+			broadcastConnectionCount()
 			break
 		}
 	}
@@ -64,7 +74,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 func handleToggle(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
-	if err != nil || id < 0 || id >= 1000 {
+	if err != nil || id < 0 || id >= 100 {
 		http.Error(w, "Invalid checkbox ID", http.StatusBadRequest)
 		return
 	}
@@ -76,7 +86,17 @@ func handleToggle(w http.ResponseWriter, r *http.Request) {
 }
 
 func broadcastUpdate(id int, checked bool) {
-	message := fmt.Sprintf("%d:%v", id, checked)
+	message := fmt.Sprintf("checkbox:%d:%v", id, checked)
+	broadcastMessage(message)
+}
+
+func broadcastConnectionCount() {
+	count := len(clients)
+	message := fmt.Sprintf("connections:%d", count)
+	broadcastMessage(message)
+}
+
+func broadcastMessage(message string) {
 	clientsMux.Lock()
 	for client := range clients {
 		err := client.WriteMessage(websocket.TextMessage, []byte(message))
@@ -88,3 +108,4 @@ func broadcastUpdate(id int, checked bool) {
 	}
 	clientsMux.Unlock()
 }
+
